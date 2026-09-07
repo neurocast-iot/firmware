@@ -10,23 +10,19 @@
 
 ## 解决什么问题？
 
-| 痛点 | 现状 | NeuroCast 的做法 |
-|------|------|------------------|
-| **厂商 PDK 绑架** | 固件写在厂商 SDK 源码树里，换芯片 = 重写全部 | PAL 平台抽象层，换硬件只加一个 backend 目录，应用层零改动 |
-| **推流方案老旧** | 大部分摄像头用 RTSP 或私有协议，浏览器看不了，要装插件/App | 内置 WebRTC（P2P + SFU），浏览器原生支持，零安装 |
-| **代码像面团** | 业务逻辑和硬件调用搅在一起，改不动、测不了 | 严格分层 apps → libs → pal，x86 上就能跑单元测试 |
-| **云端对接重复造轮子** | 每接一个云平台就写一套 MQTT + 配置 + OTA | iot_agent 统一对接，配置同步、OTA、文件上传开箱即用 |
-| **仓库臃肿** | 厂商代码 + 开源库全塞 git，clone 一次等半天 | 业务仓库干净，依赖用 FetchContent 按版本拉取 |
+- **厂商 PDK 绑架** — 固件写在厂商 SDK 源码树里，换芯片 = 重写全部。NeuroCast 用 PAL 平台抽象层解决，换硬件只加一个 backend 目录，应用层零改动
+- **推流方案老旧** — 大部分摄像头用 RTSP 或私有协议，浏览器看不了，要装插件/App。内置 WebRTC（P2P + SFU），浏览器原生支持，零安装
+- **代码像面团** — 业务逻辑和硬件调用搅在一起，改不动、测不了。严格分层 apps → libs → pal，x86 上就能跑单元测试
+- **云端对接重复造轮子** — 每接一个云平台就写一套 MQTT + 配置 + OTA。iot_agent 统一对接，配置同步、OTA、文件上传开箱即用
+- **仓库臃肿** — 厂商代码 + 开源库全塞 git，clone 一次等半天。业务仓库干净，依赖用 FetchContent 按版本拉取
 
 ## 为什么是 WebRTC？
 
-| | RTSP / 私有协议 | WebRTC |
-|---|---|---|
-| 浏览器支持 | 需要插件或转码服务器 | 原生支持，零安装 |
-| 延迟 | 1-5 秒（转码后更高） | 亚秒级（P2P 直连最低） |
-| 移动端 | 需要专用 App | H5 页面直接看 |
-| NAT 穿透 | 基本没有 | Full-ICE + STUN/TURN |
-| 多人观看 | 需要流媒体服务器转码 | SFU 模式（WHIP/WHEP）原生支持 |
+- **浏览器支持** — RTSP 需要插件或转码服务器，WebRTC 原生支持，零安装
+- **延迟** — RTSP 1-5 秒（转码后更高），WebRTC 亚秒级（P2P 直连最低）
+- **移动端** — RTSP 需要专用 App，WebRTC H5 页面直接看
+- **NAT 穿透** — RTSP 基本没有，WebRTC Full-ICE + STUN/TURN
+- **多人观看** — RTSP 需要流媒体服务器转码，WebRTC SFU 模式（WHIP/WHEP）原生支持
 
 越来越多的场景需要浏览器直接看摄像头（智能家居、门店监控、工地巡检、农业监控），不想装 App、不想部署转码服务器。WebRTC 是唯一能同时做到「浏览器直接看 + 亚秒延迟 + 多人观看」的方案。
 
@@ -97,15 +93,13 @@ ctest --preset x86-debug
 
 ### Project Structure
 
-| Directory | Description |
-|-----------|-------------|
-| `pal/` | Platform Abstraction Layer — pure interfaces + backends |
-| `libs/` | Platform-agnostic libraries (camera, recorder, OSD, HTTP, MQTT, etc.) |
-| `apps/` | Applications (mediad, iot_agent) |
-| `tests/` | Unit tests (x86 + mock backend) |
-| `cmake/` | CMake modules and toolchain files |
-| `third_party/` | FetchContent dependency declarations |
-| `scripts/` | Build and analysis scripts |
+- `pal/` — Platform Abstraction Layer（纯接口 + 各平台后端）
+- `libs/` — 平台无关库（camera, recorder, OSD, HTTP, MQTT 等）
+- `apps/` — 应用（mediad, iot_agent）
+- `tests/` — 单元测试（x86 + mock 后端）
+- `cmake/` — CMake 模块和工具链文件
+- `third_party/` — FetchContent 依赖声明
+- `scripts/` — 构建和分析脚本
 
 ## Adding a New Platform
 
@@ -119,17 +113,15 @@ The apps and libs layers require zero changes.
 
 ## Open Source vs Commercial
 
-| | 开源版 | 商用版 |
-|---|---|---|
-| 框架全部源码 | ✅ | ✅ |
-| 架构文档 & API 文档 | ✅ | ✅ |
-| 单元测试套件 | ✅ | ✅ |
-| x86 宿主机开发调试 | ✅ | ✅ |
-| **硬件平台后端**（芯片驱动适配） | ❌ | ✅ |
-| **厂商 SDK 集成**（摄像头/录像/编码器驱动） | ❌ | ✅ |
-| **设备端部署配置 & 工具链** | ❌ | ✅ |
-| **预编译固件 & 烧写工具** | ❌ | ✅ |
-| **技术支持 & 定制开发** | ❌ | ✅ |
+- ✅ 框架全部源码（开源版 / 商用版都有）
+- ✅ 架构文档 & API 文档
+- ✅ 单元测试套件
+- ✅ x86 宿主机开发调试
+- ❌ 硬件平台后端（芯片驱动适配）— 仅商用版
+- ❌ 厂商 SDK 集成（摄像头/录像/编码器驱动）— 仅商用版
+- ❌ 设备端部署配置 & 工具链 — 仅商用版
+- ❌ 预编译固件 & 烧写工具 — 仅商用版
+- ❌ 技术支持 & 定制开发 — 仅商用版
 
 开源版让你看到架构、理解设计、跑通单元测试。**要在真实硬件上运行，需要商用版。**
 
@@ -186,3 +178,5 @@ NeuroCast uses the following open-source projects. All are statically linked int
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+
+如有问题或合作意向，请发送邮件至 hnngm163@gmail.com。
