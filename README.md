@@ -114,6 +114,7 @@ Full documentation is in the [docs/](../docs/) directory at the repository root.
 
 ### Firmware (Device)
 
+- **[Architecture](../docs/firmware/architecture.md)** — Overall system architecture, IPC topology, platform abstraction
 - **[WebRTC Streaming](../docs/firmware/guides/webrtc-streaming.md)** — P2P/SFU modes, MQTT signaling, WHIP/WHEP protocol
 - [Push Streaming Protocol](../docs/firmware/api/push-streaming-protocol.md) — Detailed signaling protocol for P2P/SFU
 - [IPC Protocol](../docs/firmware/api/ipc-protocol.md) — Inter-process communication protocol
