@@ -1,0 +1,115 @@
+{
+	"device_id": "",
+	"camera": {
+		"auto_start": true,
+		"sensor_config": "/etc/isp_sensor.conf",
+		"main": {
+			"width": 1920,
+			"height": 1080,
+			"fps": 25,
+			"bitrate_kbps": 2048
+		},
+		"sub": {
+			"width": 640,
+			"height": 480,
+			"fps": 15,
+			"bitrate_kbps": 512
+		}
+	},
+	"osd": {
+		"enabled": true,
+		"font_file": "/usr/share/fonts/osd_font_16.bin",
+		"elements": [
+			{
+				"id": "time_main",
+				"type": "time",
+				"enabled": true,
+				"x": 12,
+				"y": 22,
+				"size": "medium",
+				"format": "YYYY-MM-DD",
+				"show_week": false
+			},
+			{
+				"id": "label_main",
+				"type": "label",
+				"enabled": false,
+				"text": "",
+				"x": 12,
+				"y": 89,
+				"size": "medium"
+			},
+			{
+				"id": "test_rect",
+				"type": "rect",
+				"x": 300,
+				"y": 350,
+				"w": 250,
+				"h": 200,
+				"color": "red"
+			},
+			{
+				"id": "demo_polygon",
+				"type": "polygon",
+				"points": [[600, 650], [720, 880], [480, 880]],
+				"color": "yellow",
+				"opacity": 60
+			},
+			{
+				"id": "demo_bitmap",
+				"type": "bitmap",
+				"x": 820,
+				"y": 40,
+				"w": 80,
+				"h": 80,
+				"image_path": "/etc/osd_demo_logo.bmp"
+			}
+		]
+	},
+	"snapshot": {
+		"output_dir": "/mnt/emmc/media/photos",
+		"quality": 80
+	},
+	"record": {
+		"segment_sec": 300,
+		"output_dir": "/mnt/emmc/media/records"
+	},
+	"triggers": [
+		{
+			"id": "timer_snapshot",
+			"type": "timer",
+			"enabled": true,
+			"action": "snapshot",
+			"interval_sec": 20,
+			"burst_count": 1,
+			"burst_interval_ms": 0,
+			"schedule": {
+				"start_time": "00:00",
+				"end_time": "23:59",
+				"days": [0, 1, 2, 3, 4, 5, 6]
+			}
+		}
+	],
+	"ipc": {
+		"iot_agent_endpoint": "ipc:///tmp/iot_agent.ipc"
+	},
+	"live": {
+		"enabled": true,
+		"mqtt_signaling": {
+			"url": "tcp://localhost:1883",
+			"username": "",
+			"password": ""
+		},
+		"ice": {
+			"host": "stun.example.com",
+			"port": 3478,
+			"username": "turn_user",
+			"password": "turn_password"
+		},
+		"srs": {
+			"whip_url_template": "http://stun.example.com:1985/rtc/v1/whip/?app=live&stream={deviceUid}&accessToken={accessToken}"
+		},
+		"p2p_timeout_sec": 15,
+		"relay_idle_sec": 30
+	}
+}

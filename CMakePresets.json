@@ -1,0 +1,44 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 20 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "x86-debug",
+      "displayName": "Host x86 (Debug, unit tests)",
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/x86-linux.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "NC_PLATFORM": "linux-generic",
+        "NC_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "x86-release",
+      "displayName": "Host x86 (Release)",
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/x86-linux.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "NC_PLATFORM": "linux-generic"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "x86-debug", "configurePreset": "x86-debug" },
+    { "name": "x86-release", "configurePreset": "x86-release" }
+  ],
+  "testPresets": [
+    {
+      "name": "x86-debug",
+      "configurePreset": "x86-debug",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
