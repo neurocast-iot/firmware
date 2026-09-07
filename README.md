@@ -122,7 +122,38 @@ Full documentation is in the [docs/](../docs/) directory at the repository root.
 - [OSD Elements Config](../docs/firmware/api/osd-elements-config-api.md) — OSD watermark configuration API
 - [Triggers Config](../docs/firmware/api/triggers-config-api.md) — Trigger automation configuration
 - [Configuration Reference](../docs/firmware/guides/config-reference.md) — All configuration options
-- [Architecture](../docs/firmware/architecture/multi-platform-architecture.md) — Multi-platform architecture design
+
+## Third-Party Dependencies
+
+NeuroCast uses the following open-source projects. All are statically linked into the firmware binaries.
+
+### Build-Time Dependencies
+
+| Project | Version | License | Usage |
+|---------|---------|---------|-------|
+| [libzmq](https://github.com/zeromq/libzmq) | 4.3.5 | LGPL-3.0 | IPC message queue (ZeroMQ) |
+| [cppzmq](https://github.com/zeromq/cppzmq) | 4.11.0 | MIT | ZeroMQ C++ header-only binding |
+| [cJSON](https://github.com/DaveGamble/cJSON) | 1.7.19 | MIT | JSON parser |
+| [spdlog](https://github.com/gabime/spdlog) | 1.17.0 | MIT | Logging facade |
+| [OpenSSL](https://www.openssl.org/) | system | Apache 2.0 | TLS/SSL and cryptography |
+| [libcurl](https://curl.se/libcurl/) | system | curl (MIT/X) | HTTP client & file download |
+| [Eclipse Paho MQTT](https://www.eclipse.org/paho/) | system | EPL-1.0 / EDL-1.0 | MQTT client |
+| [metaRTC](https://github.com/metartc/metaRTC) | 8.0 | MIT | WebRTC engine (P2P + WHIP) |
+
+### Test-Only Dependencies
+
+| Project | Version | License | Usage |
+|---------|---------|---------|-------|
+| [GoogleTest](https://github.com/google/googletest) | system | BSD-3-Clause | Unit test framework |
+| [libmicrohttpd](https://www.gnu.org/software/libmicrohttpd/) | system | LGPL-2.1+ | Fake HTTP server for tests |
+
+### Compatible Server
+
+| Project | License | Usage |
+|---------|---------|-------|
+| [SRS](https://github.com/ossrs/srs) | MIT | SFU server for WebRTC relay (WHIP/WHEP) |
+
+> **Note**: libzmq (LGPL-3.0) and libmicrohttpd (LGPL-2.1+) are used via static linking. Per LGPL terms, you may relink these libraries with your own modified versions.
 
 ## License
 
