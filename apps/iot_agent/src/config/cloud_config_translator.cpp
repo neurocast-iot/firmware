@@ -13,6 +13,22 @@
  *   3. 按路径创建嵌套 JSON 结构
  *   4. 没有映射的字段直接丢弃（未来可以改成透传）
  */
+
+/**
+ * Cloud config field translator implementation
+ *
+ * Driven by a mapping table — adding a new field only requires one more table entry,
+ * no logic code changes.
+ *
+ * Table format:
+ *   { cloud_field_name, mediad_path (dot-separated) }
+ *
+ * Translation flow:
+ *   1. Parse cloud JSON
+ *   2. For each field, look up the mapping table to find the corresponding mediad path
+ *   3. Build nested JSON structure along the path
+ *   4. Fields without mapping are silently dropped (could be made pass-through in the future)
+ */
 #include "cloud_config_translator.h"
 
 #include "nc/common/log_utils.h"

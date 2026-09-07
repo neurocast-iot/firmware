@@ -9,6 +9,17 @@
  *   - 优先用配置里的 device_id（调试用，手动指定）
  *   - 没有就从 Zigbee 串口读 IEEE 地址，拼 -C 后缀当设备 ID
  */
+
+/**
+ * Device service implementation — manages local hardware peripherals
+ *
+ * Currently only manages Zigbee devices (reads IEEE address as device ID).
+ * When GPS / Bluetooth are added, extend initialize() and shutdown() accordingly.
+ *
+ * Core function: getDeviceId()
+ *   - Prefers device_id from config (for debugging / manual override)
+ *   - Falls back to reading IEEE address from Zigbee serial port, with -C suffix as device ID
+ */
 #include "device_service.h"
 #include "config/agent_config.h"
 #include "nc/sensor/zigbee_reader.h"

@@ -17,6 +17,25 @@
  *     ]
  *   }
  */
+
+/**
+ * manifest.json parser
+ *
+ * manifest.json describes upgrade package contents, format example:
+ *   {
+ *     "version": "1.2.5",
+ *     "base_dir": "/",
+ *     "files": [
+ *       {
+ *         "path": "/usr/bin/iot_live",
+ *         "diff_mode": false,
+ *         "new_sha256": "abc123...",
+ *         "new_size": 1234567,
+ *         "patch": "files/usr/bin/iot_live"
+ *       }
+ *     ]
+ *   }
+ */
 #pragma once
 
 #include "ota_types.h"

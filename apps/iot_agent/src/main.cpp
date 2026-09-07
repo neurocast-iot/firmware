@@ -7,6 +7,15 @@
  *
  * 用法：iot_agent [配置文件路径]   默认 /etc/config/iot_agent.json
  */
+
+/**
+ * @brief iot_agent — NeuroCast device cloud communication process (entry point only)
+ *
+ * Only handles process-level responsibilities: log init, signal handling, lifecycle driving;
+ * all service assembly and orchestration logic is in App (composition root).
+ *
+ * Usage: iot_agent [config file path]   default /etc/config/iot_agent.json
+ */
 #include "App.h"
 #include "ipc/signal_manager.h"
 

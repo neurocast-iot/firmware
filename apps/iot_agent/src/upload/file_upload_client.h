@@ -12,6 +12,20 @@
  * 认证：X-API-KEY 请求头 + deviceUid 参数（凭证来自云端共享属性下发，
  * 由 updateServerInfo 动态更新）
  */
+
+/**
+ * File upload client — interfaces with neurocast-server device file upload API (API doc §19)
+ *
+ * Implements IUploadClient, mapping S3/OSS-style multipart semantics to 5 server endpoints:
+ *   - POST /api/device/file/upload/simple                        small file direct upload
+ *   - POST /api/device/file/upload/uploads                       init multipart
+ *   - PUT  /api/device/file/upload/uploads/{id}/parts?partNumber=N  upload part
+ *   - POST /api/device/file/upload/uploads/{id}/complete         complete merge
+ *   - DELETE /api/device/file/upload/uploads/{id}                abort upload
+ *
+ * Auth: X-API-KEY header + deviceUid param (credentials from cloud shared attributes,
+ * dynamically updated by updateServerInfo)
+ */
 #pragma once
 
 #include "nc/http/http_client.h"

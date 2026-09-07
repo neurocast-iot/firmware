@@ -15,6 +15,23 @@
  *   - 事件处理逻辑可以单独测试
  *   - 新增事件类型时不用改 main
  */
+
+/**
+ * IPC event handler — subscribes to and processes media events reported by mediad
+ *
+ * Responsibilities:
+ *   - Subscribe to MEDIA_FILE_READY (snapshot/recording file ready) -> wrap as cloud event -> report Telemetry
+ *   - Subscribe to MEDIA_STATE_CHANGED (state change) -> report Attributes
+ *
+ * Event reporting contract:
+ *   - mediad only reports "file is ready" with basic file info
+ *   - iot_agent wraps the file info into a "cloud event" with common event fields
+ *
+ * Why a separate wrapper:
+ *   - main.cpp should not care about specific event handling logic
+ *   - Event handling logic can be tested independently
+ *   - Adding new event types doesn't require changes to main
+ */
 #pragma once
 
 #include "libmq/message_manager.h"

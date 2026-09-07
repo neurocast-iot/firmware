@@ -6,6 +6,14 @@
  * 原来那段代码有 130+ 行，混在 ThingsBoardPlatform 类里，
  * 现在拆成独立函数，职责更清晰。
  */
+
+/**
+ * ThingsBoard provision implementation
+ *
+ * Extracted from acquireToken() in the legacy thingsboard_platform.cpp.
+ * The original code was 130+ lines mixed inside the ThingsBoardPlatform class;
+ * now split into a standalone function for clearer responsibility.
+ */
 #include "tb_provision.h"
 #include "token_store.h"
 #include "tb_topics.h"
@@ -38,6 +46,20 @@ static void readStr(const cJSON* root, const char* key, std::string& out) {
  *      - 发布 /provision/request 带 deviceKey + deviceSecret
  *      - 收到响应 → 提取 credentialsValue 就是 token
  *      - 存到本地文件 → 关闭临时客户端
+ */
+
+/**
+ * TB provision implementation
+ *
+ * Flow:
+ *   1) Check local token file (/data/iot_agent/token.json)
+ *      If found, use it directly — no network needed (TB tokens don't expire)
+ *   2) Not found -> start a temporary MQTT client for provision:
+ *      - username = "provision", password empty (TB provision convention)
+ *      - Subscribe to /provision/response
+ *      - Publish /provision/request with deviceKey + deviceSecret
+ *      - Receive response -> extract credentialsValue as the token
+ *      - Save to local file -> close temporary client
  */
 bool tbProvision(const std::string& cfgJson,
                  const std::string& deviceId,

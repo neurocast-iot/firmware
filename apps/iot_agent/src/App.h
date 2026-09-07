@@ -12,6 +12,21 @@
  *
  * 声明顺序 = 构造依赖顺序（后者引用前者），勿调整。
  */
+
+/**
+ * @brief iot_agent composition root
+ *
+ * Responsibility:
+ *   Create all modules in dependency order, wire callbacks, manage shutdown.
+ *   main.cpp only handles process-level concerns (logging, signals, main loop);
+ *   all business assembly is here.
+ *
+ * Symmetric with mediad's App:
+ *   - mediad App manages "local media" (camera/OSD/recording/snapshot/triggers)
+ *   - iot_agent App manages "cloud channel" (MQTT/upload/OTA/config routing/RPC)
+ *
+ * Declaration order = construction dependency order (later references earlier), do not reorder.
+ */
 #pragma once
 
 #include "config/agent_config.h"

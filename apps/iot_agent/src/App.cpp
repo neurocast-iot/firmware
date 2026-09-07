@@ -10,6 +10,18 @@
  *   - 再停云通道，最后的上报还能发出去
  *   - 最后停硬件
  */
+
+/**
+ * @brief iot_agent composition root implementation
+ *
+ * Wiring logic migrated from main.cpp, organized by module dependency order:
+ *   Config -> Hardware -> Cloud -> Upload -> IPC -> OTA -> Config Router/RPC -> Callback wiring -> Start
+ *
+ * Shutdown order is reverse of startup (stopStack LIFO), ensuring:
+ *   - Stop business modules first (ota/ipc/upload), no new data generated
+ *   - Stop cloud channel next, last reports can still be sent
+ *   - Stop hardware last
+ */
 #include "App.h"
 
 #include "nc/common/log_utils.h"

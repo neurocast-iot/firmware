@@ -17,6 +17,25 @@
  *   - 队列上限 100，超出丢最旧：内存有限，宁可丢老文件也不无限积压
  *   - 断点续传靠服务端 uploadedParts：重试时重新 init，跳过已传分片
  */
+
+/**
+ * File upload service — single queue + multiple workers + retry orchestration
+ *
+ * Responsibilities:
+ *   - Receive upload tasks (original image/thumbnail/video) parsed by IpcEventHandler, non-blocking enqueue
+ *   - Worker threads pick tasks from queue, dispatch by file type:
+ *       image / thumbnail -> simple direct upload
+ *       video             -> multipart chunked (2MB/chunk, resume + instant upload)
+ *   - Retry on failure (exponential backoff 2s/4s/8s), discard and report on exhaustion
+ *
+ * Key design decisions (lessons from gw_av100's FileUploadService):
+ *   - 2 workers: video may take minutes, single thread would cause head-of-line blocking
+ *     for images; 4G uplink is fixed bandwidth, >2 workers only dilute throughput
+ *   - Workers idle when credentials not delivered (baseUrl/apiKey empty), tasks queue up;
+ *     resumed via notify when cloud attributes arrive
+ *   - Queue cap 100, drops oldest on overflow: memory is limited, prefer dropping old files
+ *   - Resume relies on server-side uploadedParts: re-init on retry, skip already-uploaded chunks
+ */
 #pragma once
 
 #include "upload/upload_client.h"

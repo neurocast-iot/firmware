@@ -16,6 +16,25 @@
  *   IPC 启动失败不致命——进程继续跑（云连接还在），只是 mediad 的
  *   事件转发和配置下发用不了。所以 start() 返回 false 时记日志继续。
  */
+
+/**
+ * IPC hub node wrapper — ROUTER mode, waits for mediad and other business processes to connect
+ *
+ * What it wraps:
+ *   - libmq MessageManager creation / start / stop (with log integration)
+ *   - ConfigSyncManager creation (reliable config delivery to business processes)
+ *   - Service heartbeat: broadcast heartbeat requests on start, mark service online on ACK
+ *   - Cloud config delta translation and delivery (publishConfigDelta)
+ *
+ * Why extracted from main.cpp:
+ *   These are "IPC channel infrastructure" setup logic, not assembly work for main.
+ *   main only needs a single start() call, then uses manager() to subscribe to business events.
+ *
+ * Failure strategy:
+ *   IPC startup failure is non-fatal — the process keeps running (cloud connection is still
+ *   alive), only mediad event forwarding and config delivery become unavailable.
+ *   So start() logs and continues on false.
+ */
 #pragma once
 
 #include "libmq/message_manager.h"

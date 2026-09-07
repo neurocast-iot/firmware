@@ -14,6 +14,22 @@
  *   - restart：重启设备（先回复云端，1 秒后执行 reboot）
  *   - reset：恢复出厂配置（清掉 device_config.json + token.json，回复后自动重启）
  */
+
+/**
+ * RPC command handler implementation
+ *
+ * Processing flow:
+ *   1) Log the received RPC command
+ *   2) Dispatch to the specific handler by method
+ *   3) Reply to TB with execution result (success/failure)
+ *
+ * Supported commands:
+ *   - uploadFile: upload raw files on device on demand (triggered by cloud when user wants original image/video)
+ *   - startLiveStream: start live stream push (sends IPC command to mediad)
+ *   - stopLiveStream: stop live stream push (sends IPC command to mediad)
+ *   - restart: reboot device (reply cloud first, then reboot after 1s)
+ *   - reset: factory reset (clear device_config.json + token.json, auto-reboot after reply)
+ */
 #include "router/rpc_handler.h"
 
 #include "config/agent_config.h"

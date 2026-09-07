@@ -27,6 +27,35 @@
  *   TB 的 RPC 回复要 publish 到 v1/devices/me/rpc/response/{requestId}
  *   所以需要一个 publish 回调（由 main.cpp 传入，底层调 MqttClient::publish）
  */
+
+/**
+ * RPC command handler
+ *
+ * Responsibility:
+ *   Receive TB RPC commands -> dispatch by method -> reply with execution result
+ *
+ * Supported commands:
+ *   - uploadFile: upload raw files on device (on-demand retrieval scenario)
+ *     Params: {"fileType":"image|video","filePath":"/mnt/...","fileId":"xxx"}
+ *     Enqueues upload task; actual result reported via media_file_upload_result event
+ *     (response only indicates task was enqueued)
+ *   - startLiveStream: start live stream push
+ *     Params: none (or empty JSON)
+ *     Sends MEDIA_STREAM_START via IPC to mediad, triggers LiveStreamService push mode
+ *   - stopLiveStream: stop live stream push
+ *     Params: none (or empty JSON)
+ *     Sends MEDIA_STREAM_STOP via IPC to mediad
+ *   - restart: reboot device
+ *     Params: none
+ *     Reply TB success first, then reboot after 1 second
+ *   - reset: factory reset
+ *     Params: none
+ *     Clear device_config.json + token.json, auto-reboot after reply success
+ *
+ * Reply method:
+ *   TB RPC replies must be published to v1/devices/me/rpc/response/{requestId}
+ *   Requires a publish callback (passed in by main.cpp,底层 calls MqttClient::publish)
+ */
 #pragma once
 
 #include <cstdint>

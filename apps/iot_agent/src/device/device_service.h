@@ -11,7 +11,22 @@
  *   3) 后续扩展：GPS 定位、蓝牙扫描等
  *
  * 和 CloudService 的分工：
- *   DeviceService 管"本地硬件"，CloudService 管"远端云端"。
+ *   DeviceService 管“本地硬件”，CloudService 管“远端云端”。
+ */
+
+/**
+ * Device service — manages all hardware peripherals (Zigbee / GPS / Bluetooth ...)
+ *
+ * Inspired by ThingsBoard IoT Gateway's Connector layer:
+ *   each hardware peripheral maps to a Connector; DeviceService manages their lifecycle.
+ *
+ * Responsibilities:
+ *   1) Initialize hardware peripherals (open serial ports, establish connections)
+ *   2) Obtain device ID (read IEEE address from Zigbee)
+ *   3) Future extensions: GPS positioning, Bluetooth scanning, etc.
+ *
+ * Division of labor with CloudService:
+ *   DeviceService manages "local hardware"; CloudService manages "remote cloud".
  */
 #pragma once
 

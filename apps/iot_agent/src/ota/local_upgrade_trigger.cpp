@@ -2,6 +2,10 @@
  * @file local_upgrade_trigger.cpp
  * @brief 本地升级触发器实现
  */
+
+/**
+ * @brief Local upgrade trigger implementation
+ */
 #include "local_upgrade_trigger.h"
 #include "ota_manager.h"
 #include "ipc/signal_manager.h"

@@ -13,6 +13,22 @@
  *   - init 返回 uploadedParts（服务端已存在的分片号），上层跳过这些分片
  *   - init 返回 instantComplete=true 表示秒传命中（MD5 相同），无需传分片
  */
+
+/**
+ * Upload client abstract interface — upload protocol defined by S3/OSS multipart semantics
+ *
+ * Scope:
+ *   - Upper layer (FileUploadService) only cares about "delivering a file to remote",
+ *     not protocol details
+ *   - Interface modeled after industry standard (S3 MultipartUpload / OSS InitiateMultipartUpload):
+ *     init -> part x N -> complete / abort, semantics match the five-step flow
+ *   - Future OSS/S3 direct upload: just add new implementation classes (OssUploadClient /
+ *     S3UploadClient); auth differs but flow semantics are identical, zero upper-layer changes
+ *
+ * Resume convention:
+ *   - init returns uploadedParts (server-side existing part numbers), upper layer skips them
+ *   - init returns instantComplete=true means instant upload hit (same MD5), no parts needed
+ */
 #pragma once
 
 #include <cstdint>

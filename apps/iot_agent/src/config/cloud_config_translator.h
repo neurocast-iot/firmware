@@ -10,6 +10,18 @@
  *   - 用映射表驱动，加字段只改表，不改代码
  *   - 放在 iot_agent 里，mediad 完全不知道云端字段叫什么
  */
+
+/**
+ * Cloud config field translator
+ *
+ * The cloud uses flat field names (e.g. snapshot_resolution_width),
+ * while the device internally uses nested structures (e.g. camera.sub.width).
+ * This class translates between the two so internal modules don't need to know cloud naming.
+ *
+ * Design principles:
+ *   - Driven by a mapping table; adding a field only requires a table entry, no code changes
+ *   - Lives in iot_agent; mediad has no knowledge of cloud field names
+ */
 #pragma once
 
 #include <string>

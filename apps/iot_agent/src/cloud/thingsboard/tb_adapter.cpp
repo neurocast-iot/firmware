@@ -9,6 +9,18 @@
  *
  * provision 逻辑已拆到 tb_provision.cpp，这里 authenticate() 只调函数。
  */
+
+/**
+ * ThingsBoard adapter implementation
+ *
+ * Migrated from the legacy thingsboard_platform.cpp, adapted to the new CloudAdapter interface:
+ *   - configureMqtt: build TB MQTT login params from accessToken
+ *   - parseMessage: parse TB messages -> DeviceData (replaces old handleMessage + callback)
+ *   - requestAttributes / publish: take MqttClient& directly, no stored pointer
+ *
+ * Provision logic has been split into tb_provision.cpp;
+ * authenticate() here simply delegates to it.
+ */
 #include "tb_adapter.h"
 #include "tb_provision.h"
 #include "tb_topics.h"
