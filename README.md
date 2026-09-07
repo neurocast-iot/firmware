@@ -4,9 +4,33 @@
 [![CMake](https://img.shields.io/badge/CMake-3.20+-blue.svg)](https://cmake.org/)
 [![C++14](https://img.shields.io/badge/C++-14-blue.svg)](https://isocpp.org/)
 
-A multi-platform embedded media & IoT camera framework.
+**嵌入式 IP 摄像头固件框架，以 WebRTC 实时推流为核心。**
 
-NeuroCast provides the framework layer for building IP camera firmware: **WebRTC real-time streaming** (P2P + SFU), media services (recording, OSD watermarks, snapshots), IoT cloud connectivity, trigger-based automation, and OTA updates — all behind clean platform abstractions.
+浏览器直接看、零插件零安装、亚秒延迟 — 这是 WebRTC 带来的体验变革，而目前几乎没有嵌入式摄像头固件原生支持它。NeuroCast 把这件事做好了。
+
+## 解决什么问题？
+
+| 痛点 | 现状 | NeuroCast 的做法 |
+|------|------|------------------|
+| **厂商 PDK 绑架** | 固件写在厂商 SDK 源码树里，换芯片 = 重写全部 | PAL 平台抽象层，换硬件只加一个 backend 目录，应用层零改动 |
+| **推流方案老旧** | 大部分摄像头用 RTSP 或私有协议，浏览器看不了，要装插件/App | 内置 WebRTC（P2P + SFU），浏览器原生支持，零安装 |
+| **代码像面团** | 业务逻辑和硬件调用搅在一起，改不动、测不了 | 严格分层 apps → libs → pal，x86 上就能跑单元测试 |
+| **云端对接重复造轮子** | 每接一个云平台就写一套 MQTT + 配置 + OTA | iot_agent 统一对接，配置同步、OTA、文件上传开箱即用 |
+| **仓库臃肿** | 厂商代码 + 开源库全塞 git，clone 一次等半天 | 业务仓库干净，依赖用 FetchContent 按版本拉取 |
+
+## 为什么是 WebRTC？
+
+| | RTSP / 私有协议 | WebRTC |
+|---|---|---|
+| 浏览器支持 | 需要插件或转码服务器 | 原生支持，零安装 |
+| 延迟 | 1-5 秒（转码后更高） | 亚秒级（P2P 直连最低） |
+| 移动端 | 需要专用 App | H5 页面直接看 |
+| NAT 穿透 | 基本没有 | Full-ICE + STUN/TURN |
+| 多人观看 | 需要流媒体服务器转码 | SFU 模式（WHIP/WHEP）原生支持 |
+
+越来越多的场景需要浏览器直接看摄像头（智能家居、门店监控、工地巡检、农业监控），不想装 App、不想部署转码服务器。WebRTC 是唯一能同时做到「浏览器直接看 + 亚秒延迟 + 多人观看」的方案。
+
+NeuroCast 以 WebRTC 为核心，架构预留扩展 — 未来可以接入其他推流协议，但 WebRTC 是当前主打和核心差异化。
 
 ## Key Features
 
@@ -16,8 +40,6 @@ Built-in WebRTC support with two streaming modes:
 
 - **P2P** — Direct browser-to-device connection via MQTT signaling, Full-ICE (host + STUN/TURN), lowest latency
 - **SFU** — WHIP push to SRS server, WHEP pull by viewers, supports multiple viewers and NAT traversal fallback
-
-The device is always the answerer in P2P mode and the offerer in SFU (WHIP) mode. No automatic mode switching — the frontend controls all transitions via MQTT signaling or RPC.
 
 See [WebRTC Streaming Guide](../docs/firmware/guides/webrtc-streaming.md) for the full protocol specification.
 
@@ -95,18 +117,23 @@ ctest --preset x86-debug
 
 The apps and libs layers require zero changes.
 
-## What's in the Open-Source Version
+## Open Source vs Commercial
 
-| Included | Not Included |
-|----------|-------------|
-| All framework interfaces (`pal/include/`, `libs/*/include/`) | Vendor SDK backend implementations |
-| `linux-generic` software rendering backend | `anyka-av100` (Anychip) backend |
-| `mock` backend for testing | Vendor-specific toolchain files |
-| All application source code (mediad, iot_agent) | Vendor SDK headers/libraries |
-| Full unit test suite | Device-specific deployment configs |
-| Trigger system (timer, bluetooth, record) | |
-| OSD engine with cross-resolution support | |
-| Config sync protocol | |
+| | 开源版 | 商用版 |
+|---|---|---|
+| 框架全部源码 | ✅ | ✅ |
+| 架构文档 & API 文档 | ✅ | ✅ |
+| 单元测试套件 | ✅ | ✅ |
+| x86 宿主机开发调试 | ✅ | ✅ |
+| **硬件平台后端**（芯片驱动适配） | ❌ | ✅ |
+| **厂商 SDK 集成**（摄像头/录像/编码器驱动） | ❌ | ✅ |
+| **设备端部署配置 & 工具链** | ❌ | ✅ |
+| **预编译固件 & 烧写工具** | ❌ | ✅ |
+| **技术支持 & 定制开发** | ❌ | ✅ |
+
+开源版让你看到架构、理解设计、跑通单元测试。**要在真实硬件上运行，需要商用版。**
+
+👉 [了解商用版](COMMERCIAL.md)
 
 ## Documentation
 
