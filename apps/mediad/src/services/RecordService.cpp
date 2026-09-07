@@ -305,6 +305,11 @@ void RecordService::startThumbnailGuard() {
                  "thumbnail will use fallback frame", static_cast<int>(err));
     }
 
+    /* 回收上一次的缩略图线程（跑完了但没 join，还占着 joinable 状态，
+     * 不 join 就赋新值会触发 std::terminate） */
+    if (m_thumbThread.joinable()) {
+        m_thumbThread.join();
+    }
     /* 启动后台线程等待第 5 帧并抓初始缩略图（线程存成员变量，stop 时能 join） */
     m_thumbThread = std::thread([this]() {
         /* 等待第 5 帧（约 0.5 秒）或超时 1 秒 */
@@ -370,6 +375,11 @@ void RecordService::refreshThumbAfterRotate() {
     NC_LOGI("RecordService: segment rotated, thumbnail switches to {}",
             thumbDestPath.c_str());
 
+    /* 回收上一次的缩略图线程（分段期间可能还在跑，也可能跑完了没 join，
+     * 不 join 就赋新值会触发 std::terminate） */
+    if (m_thumbThread.joinable()) {
+        m_thumbThread.join();
+    }
     /* 抓当前帧作为新段的初始缩略图；captureThumbnail 要花几十毫秒，
      * 放后台线程做，免得堵住帧回调影响录像写盘（线程存成员变量，stop 时能 join） */
     m_thumbThread = std::thread([this]() { this->saveThumbnailToFile("segment"); });
