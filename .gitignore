@@ -26,3 +26,6 @@ logs/
 # Test artifacts
 Testing/
 CTestTestfile.cmake
+
+# Documentation (moved to repo root docs/)
+docs/

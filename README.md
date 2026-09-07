@@ -6,7 +6,27 @@
 
 A multi-platform embedded media & IoT camera framework.
 
-NeuroCast provides the framework layer for building IP camera firmware: media services (recording, streaming, OSD watermarks, snapshots), IoT cloud connectivity, trigger-based automation, and OTA updates — all behind clean platform abstractions.
+NeuroCast provides the framework layer for building IP camera firmware: **WebRTC real-time streaming** (P2P + SFU), media services (recording, OSD watermarks, snapshots), IoT cloud connectivity, trigger-based automation, and OTA updates — all behind clean platform abstractions.
+
+## Key Features
+
+### WebRTC Real-Time Streaming
+
+Built-in WebRTC support with two streaming modes:
+
+- **P2P** — Direct browser-to-device connection via MQTT signaling, Full-ICE (host + STUN/TURN), lowest latency
+- **SFU** — WHIP push to SRS server, WHEP pull by viewers, supports multiple viewers and NAT traversal fallback
+
+The device is always the answerer in P2P mode and the offerer in SFU (WHIP) mode. No automatic mode switching — the frontend controls all transitions via MQTT signaling or RPC.
+
+See [WebRTC Streaming Guide](../docs/firmware/guides/webrtc-streaming.md) for the full protocol specification.
+
+### Media Services
+
+- **Recording** — MP4 recording with configurable segment duration
+- **Snapshots** — JPEG capture with trigger-based automation (timer, bluetooth, SOS)
+- **OSD Watermarks** — Cross-resolution overlay engine (time, text, shapes, bitmaps)
+- **Trigger System** — Pluggable trigger sources with priority-based scheduling
 
 ## Architecture
 
@@ -87,6 +107,22 @@ The apps and libs layers require zero changes.
 | Trigger system (timer, bluetooth, record) | |
 | OSD engine with cross-resolution support | |
 | Config sync protocol | |
+
+## Documentation
+
+Full documentation is in the [docs/](../docs/) directory at the repository root.
+
+### Firmware (Device)
+
+- **[WebRTC Streaming](../docs/firmware/guides/webrtc-streaming.md)** — P2P/SFU modes, MQTT signaling, WHIP/WHEP protocol
+- [Push Streaming Protocol](../docs/firmware/api/push-streaming-protocol.md) — Detailed signaling protocol for P2P/SFU
+- [IPC Protocol](../docs/firmware/api/ipc-protocol.md) — Inter-process communication protocol
+- [mediad API](../docs/firmware/api/mediad-api.md) — Media daemon command and event reference
+- [iot_agent API](../docs/firmware/api/iot-agent-api.md) — Cloud agent MQTT interface
+- [OSD Elements Config](../docs/firmware/api/osd-elements-config-api.md) — OSD watermark configuration API
+- [Triggers Config](../docs/firmware/api/triggers-config-api.md) — Trigger automation configuration
+- [Configuration Reference](../docs/firmware/guides/config-reference.md) — All configuration options
+- [Architecture](../docs/firmware/architecture/multi-platform-architecture.md) — Multi-platform architecture design
 
 ## License
 
