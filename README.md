@@ -4,49 +4,32 @@
 [![CMake](https://img.shields.io/badge/CMake-3.20+-blue.svg)](https://cmake.org/)
 [![C++14](https://img.shields.io/badge/C++-14-blue.svg)](https://isocpp.org/)
 
-**嵌入式 IP 摄像头固件框架，以 WebRTC 实时推流为核心。**
+嵌入式 IP 摄像头固件框架。以 WebRTC 实时推流为核心，覆盖媒体服务、云端对接、触发自动化、OTA 升级的完整能力，通过平台抽象层实现一套代码适配不同芯片。
 
-浏览器直接看、零插件零安装、亚秒延迟 — 这是 WebRTC 带来的体验变革，而目前几乎没有嵌入式摄像头固件原生支持它。NeuroCast 把这件事做好了。
+## 核心能力
 
-## 解决什么问题？
+- **WebRTC 实时推流** — 支持 P2P（浏览器直连，MQTT 信令，Full-ICE）和 SFU（WHIP 推到 SRS，WHEP 拉流，多人观看）两种模式。浏览器零插件直接看，亚秒延迟
+- **媒体服务** — MP4 录像（可配分段时长）、JPEG 拍照（手动 + 触发自动拍）、OSD 水印（时间/文字/图形/位图，跨分辨率自适应）
+- **触发源自动化** — 可插拔的触发源架构（定时器、蓝牙、录像联动），优先级排队调度
+- **云端对接** — iot_agent 进程统一处理 MQTT 连接、配置同步、文件上传、RPC 命令转发，对接 ThingsBoard 等平台
+- **OTA 升级** — 固件下载 → 校验 → 烧写全流程，支持硬件分区级升级
+- **平台抽象层（PAL）** — 纯接口定义，硬件相关代码收敛在 backends 目录，应用层和库层零平台依赖
 
-- **厂商 PDK 绑架** — 固件写在厂商 SDK 源码树里，换芯片 = 重写全部。NeuroCast 用 PAL 平台抽象层解决，换硬件只加一个 backend 目录，应用层零改动
-- **推流方案老旧** — 大部分摄像头用 RTSP 或私有协议，浏览器看不了，要装插件/App。内置 WebRTC（P2P + SFU），浏览器原生支持，零安装
-- **代码像面团** — 业务逻辑和硬件调用搅在一起，改不动、测不了。严格分层 apps → libs → pal，x86 上就能跑单元测试
-- **云端对接重复造轮子** — 每接一个云平台就写一套 MQTT + 配置 + OTA。iot_agent 统一对接，配置同步、OTA、文件上传开箱即用
-- **仓库臃肿** — 厂商代码 + 开源库全塞 git，clone 一次等半天。业务仓库干净，依赖用 FetchContent 按版本拉取
+## 平台支持
 
-## 为什么是 WebRTC？
+- **anyka-av100**（Anychip AK39AV100）— 已完整适配，摄像头/录像/编码器/OSD/推流全部跑通，已交付日本客户正式商用
+- **linux-generic** — 通用 Linux 后端，软件渲染 OSD、文件模拟固件烧写，用于 x86 宿主机开发调试
+- **mock** — 单元测试桩，所有接口返回模拟数据
 
-- **浏览器支持** — RTSP 需要插件或转码服务器，WebRTC 原生支持，零安装
-- **延迟** — RTSP 1-5 秒（转码后更高），WebRTC 亚秒级（P2P 直连最低）
-- **移动端** — RTSP 需要专用 App，WebRTC H5 页面直接看
-- **NAT 穿透** — RTSP 基本没有，WebRTC Full-ICE + STUN/TURN
-- **多人观看** — RTSP 需要流媒体服务器转码，WebRTC SFU 模式（WHIP/WHEP）原生支持
+框架设计上，新增一个硬件平台只需要加一个 backend 目录和一个 CMake preset，应用层代码零改动。
 
-越来越多的场景需要浏览器直接看摄像头（智能家居、门店监控、工地巡检、农业监控），不想装 App、不想部署转码服务器。WebRTC 是唯一能同时做到「浏览器直接看 + 亚秒延迟 + 多人观看」的方案。
+## 背景与由来
 
-NeuroCast 以 WebRTC 为核心，架构预留扩展 — 未来可以接入其他推流协议，但 WebRTC 是当前主打和核心差异化。
+这套框架源自一个实际问题：传统嵌入式摄像头固件都是在厂商 PDK 源码树里原地开发，业务代码和硬件调用搅在一起，换芯片等于重写，代码改不动也测不了。每接一个云平台还要重新写一套 MQTT + 配置 + OTA，推流方案停留在 RTSP 或私有协议，浏览器看不了。
 
-## Key Features
+NeuroCast 的做法是把应用逻辑和硬件平台彻底分开：上层是纯业务代码，中间是通用库，底层是平台抽象接口。厂商 SDK 只在 backends 目录里出现，x86 上就能跑单元测试。推流选择 WebRTC 作为核心方向 — 浏览器原生支持、亚秒延迟、NAT 穿透、多人观看，这些是 RTSP 做不到的。架构预留了扩展空间，未来可以接入其他推流协议。
 
-### WebRTC Real-Time Streaming
-
-Built-in WebRTC support with two streaming modes:
-
-- **P2P** — Direct browser-to-device connection via MQTT signaling, Full-ICE (host + STUN/TURN), lowest latency
-- **SFU** — WHIP push to SRS server, WHEP pull by viewers, supports multiple viewers and NAT traversal fallback
-
-See [WebRTC Streaming Guide](../docs/firmware/guides/webrtc-streaming.md) for the full protocol specification.
-
-### Media Services
-
-- **Recording** — MP4 recording with configurable segment duration
-- **Snapshots** — JPEG capture with trigger-based automation (timer, bluetooth, SOS)
-- **OSD Watermarks** — Cross-resolution overlay engine (time, text, shapes, bitmaps)
-- **Trigger System** — Pluggable trigger sources with priority-based scheduling
-
-## Architecture
+## 架构
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -74,16 +57,16 @@ See [WebRTC Streaming Guide](../docs/firmware/guides/webrtc-streaming.md) for th
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Key Design Principles
+设计原则：
 
-- **Strict layering**: `apps → libs → pal interfaces ← backends`. Vendor SDK headers never leak above `pal/backends/`.
-- **Platform abstraction**: New hardware platform = new `pal/backends/<platform>/` directory + `libs/camera/src/<platform>/` + `libs/recorder/src/<platform>/`. Zero changes to apps or libs.
-- **Build-time platform selection**: `NC_PLATFORM` CMake variable selects exactly one backend. No runtime overhead.
-- **Hot-reloadable config**: All services support config updates without restart (triggers, OSD, recording parameters).
+- **严格分层** — `apps → libs → pal 接口 ← backends`，厂商 SDK 头文件不允许出现在 `pal/backends/` 之外
+- **平台抽象** — 新增硬件平台 = 新增一个 backend 目录 + 一个 toolchain 文件 + 一个 CMake preset，应用层和库层零改动
+- **构建时选择平台** — `NC_PLATFORM` CMake 变量在编译时选定唯一后端，无运行时开销
+- **配置热更新** — 所有服务支持运行时更新配置，无需重启（触发源、OSD、录像参数等）
 
-## Quick Start
+## 快速开始
 
-### Build (x86 host, with unit tests)
+### 编译（x86 宿主机，含单元测试）
 
 ```bash
 cmake --preset x86-debug
@@ -91,27 +74,27 @@ cmake --build --preset x86-debug
 ctest --preset x86-debug
 ```
 
-### Project Structure
+### 目录结构
 
-- `pal/` — Platform Abstraction Layer（纯接口 + 各平台后端）
+- `pal/` — 平台抽象层（纯接口 + 各平台后端实现）
 - `libs/` — 平台无关库（camera, recorder, OSD, HTTP, MQTT 等）
-- `apps/` — 应用（mediad, iot_agent）
+- `apps/` — 应用（mediad 媒体守护进程, iot_agent 云端代理）
 - `tests/` — 单元测试（x86 + mock 后端）
 - `cmake/` — CMake 模块和工具链文件
 - `third_party/` — FetchContent 依赖声明
 - `scripts/` — 构建和分析脚本
 
-## Adding a New Platform
+### 新增平台
 
-1. Create `pal/backends/<your-platform>/` implementing `pal/include/pal/*.h`
-2. Create `libs/camera/src/<your-platform>/` implementing `CameraDriver`
-3. Create `libs/recorder/src/<your-platform>/` implementing `recorder_driver` / `demuxer_driver`
-4. Add `elseif(NC_PLATFORM STREQUAL "<your-platform>")` branches in `pal/CMakeLists.txt`, `libs/camera/CMakeLists.txt`, `libs/recorder/CMakeLists.txt`
-5. Add a CMake preset in `CMakePresets.json`
+1. 新建 `pal/backends/<platform>/`，实现 `pal/include/pal/*.h` 接口
+2. 新建 `libs/camera/src/<platform>/`，实现 `CameraDriver`
+3. 新建 `libs/recorder/src/<platform>/`，实现 `recorder_driver` / `demuxer_driver`
+4. 在 `pal/CMakeLists.txt`、`libs/camera/CMakeLists.txt`、`libs/recorder/CMakeLists.txt` 加 `elseif` 分支
+5. 在 `CMakePresets.json` 加一个构建预设
 
-The apps and libs layers require zero changes.
+应用层和库层代码零改动。
 
-## Open Source vs Commercial
+## 开源版 vs 商用版
 
 - ✅ 框架全部源码（开源版 / 商用版都有）
 - ✅ 架构文档 & API 文档
@@ -123,57 +106,47 @@ The apps and libs layers require zero changes.
 - ❌ 预编译固件 & 烧写工具 — 仅商用版
 - ❌ 技术支持 & 定制开发 — 仅商用版
 
-开源版让你看到架构、理解设计、跑通单元测试。**要在真实硬件上运行，需要商用版。**
+开源版可以查看架构、理解设计、跑通单元测试。要在真实硬件上运行，需要商用版。
 
 👉 [了解商用版](COMMERCIAL.md)
 
-## Documentation
+## 文档
 
-Full documentation is in the [docs/](../docs/) directory at the repository root.
+完整文档在仓库根目录的 [docs/](../docs/) 下。
 
-### Firmware (Device)
+- **[架构文档](../docs/firmware/architecture.md)** — 系统整体架构、IPC 拓扑、平台抽象策略、数据流
+- **[WebRTC 推流](../docs/firmware/guides/webrtc-streaming.md)** — P2P/SFU 模式、MQTT 信令、WHIP/WHEP 协议
+- [信令协议](../docs/firmware/api/push-streaming-protocol.md) — P2P/SFU 信令详细协议
+- [IPC 协议](../docs/firmware/api/ipc-protocol.md) — 进程间通信协议
+- [mediad 接口](../docs/firmware/api/mediad-api.md) — 媒体守护进程命令和事件参考
+- [iot_agent 接口](../docs/firmware/api/iot-agent-api.md) — 云端代理 MQTT 接口
+- [OSD 水印配置](../docs/firmware/api/osd-elements-config-api.md) — OSD 元素配置 API
+- [触发源配置](../docs/firmware/api/triggers-config-api.md) — 触发自动化配置
+- [配置参考](../docs/firmware/guides/config-reference.md) — 全部配置项说明
 
-- **[Architecture](../docs/firmware/architecture.md)** — Overall system architecture, IPC topology, platform abstraction
-- **[WebRTC Streaming](../docs/firmware/guides/webrtc-streaming.md)** — P2P/SFU modes, MQTT signaling, WHIP/WHEP protocol
-- [Push Streaming Protocol](../docs/firmware/api/push-streaming-protocol.md) — Detailed signaling protocol for P2P/SFU
-- [IPC Protocol](../docs/firmware/api/ipc-protocol.md) — Inter-process communication protocol
-- [mediad API](../docs/firmware/api/mediad-api.md) — Media daemon command and event reference
-- [iot_agent API](../docs/firmware/api/iot-agent-api.md) — Cloud agent MQTT interface
-- [OSD Elements Config](../docs/firmware/api/osd-elements-config-api.md) — OSD watermark configuration API
-- [Triggers Config](../docs/firmware/api/triggers-config-api.md) — Trigger automation configuration
-- [Configuration Reference](../docs/firmware/guides/config-reference.md) — All configuration options
+## 第三方依赖
 
-## Third-Party Dependencies
+构建时依赖（静态链接到固件二进制中）：
 
-NeuroCast uses the following open-source projects. All are statically linked into the firmware binaries.
+- [libzmq](https://github.com/zeromq/libzmq) 4.3.5 (LGPL-3.0) — IPC 消息队列
+- [cppzmq](https://github.com/cppzmq/cppzmq) 4.11.0 (MIT) — ZeroMQ C++ 头文件绑定
+- [cJSON](https://github.com/DaveGamble/cJSON) 1.7.19 (MIT) — JSON 解析
+- [spdlog](https://github.com/gabime/spdlog) 1.17.0 (MIT) — 日志
+- [OpenSSL](https://www.openssl.org/) (Apache 2.0) — TLS/SSL 和密码学
+- [libcurl](https://curl.se/libcurl/) (MIT/X) — HTTP 客户端和文件下载
+- [Eclipse Paho MQTT](https://www.eclipse.org/paho/) (EPL-1.0 / EDL-1.0) — MQTT 客户端
+- [metaRTC](https://github.com/metartc/metaRTC) 8.0 (MIT) — WebRTC 引擎（P2P + WHIP）
 
-### Build-Time Dependencies
+测试依赖：
 
-| Project | Version | License | Usage |
-|---------|---------|---------|-------|
-| [libzmq](https://github.com/zeromq/libzmq) | 4.3.5 | LGPL-3.0 | IPC message queue (ZeroMQ) |
-| [cppzmq](https://github.com/zeromq/cppzmq) | 4.11.0 | MIT | ZeroMQ C++ header-only binding |
-| [cJSON](https://github.com/DaveGamble/cJSON) | 1.7.19 | MIT | JSON parser |
-| [spdlog](https://github.com/gabime/spdlog) | 1.17.0 | MIT | Logging facade |
-| [OpenSSL](https://www.openssl.org/) | system | Apache 2.0 | TLS/SSL and cryptography |
-| [libcurl](https://curl.se/libcurl/) | system | curl (MIT/X) | HTTP client & file download |
-| [Eclipse Paho MQTT](https://www.eclipse.org/paho/) | system | EPL-1.0 / EDL-1.0 | MQTT client |
-| [metaRTC](https://github.com/metartc/metaRTC) | 8.0 | MIT | WebRTC engine (P2P + WHIP) |
+- [GoogleTest](https://github.com/google/googletest) (BSD-3-Clause) — 单元测试框架
+- [libmicrohttpd](https://www.gnu.org/software/libmicrohttpd/) (LGPL-2.1+) — 测试用假 HTTP 服务器
 
-### Test-Only Dependencies
+兼容服务器：
 
-| Project | Version | License | Usage |
-|---------|---------|---------|-------|
-| [GoogleTest](https://github.com/google/googletest) | system | BSD-3-Clause | Unit test framework |
-| [libmicrohttpd](https://www.gnu.org/software/libmicrohttpd/) | system | LGPL-2.1+ | Fake HTTP server for tests |
+- [SRS](https://github.com/ossrs/srs) (MIT) — SFU 推流场景下的 WebRTC 中继服务器。设备通过 WHIP 推流到 SRS，观看端通过 WHEP 拉流，实现多人观看和 NAT 穿透
 
-### Compatible Server
-
-| Project | License | Usage |
-|---------|---------|-------|
-| [SRS](https://github.com/ossrs/srs) | MIT | SFU server for WebRTC relay (WHIP/WHEP) |
-
-> **Note**: libzmq (LGPL-3.0) and libmicrohttpd (LGPL-2.1+) are used via static linking. Per LGPL terms, you may relink these libraries with your own modified versions.
+> libzmq (LGPL-3.0) 和 libmicrohttpd (LGPL-2.1+) 通过静态链接使用。根据 LGPL 条款，你可以用自行修改的版本重新链接。
 
 ## License
 
