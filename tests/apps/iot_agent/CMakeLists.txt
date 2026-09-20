@@ -5,6 +5,7 @@
 #   ota/      → OTA 模块 (manifest 解析/类型工具/ThingsBoard 通知)
 #   config/   → 配置模块 (cloud_config_translator/agent_config)
 #   router/   → 路由模块 (config_router 配置合并/变更检测)
+#   tunnel/   → 隧道模块 (TunnelManager 反向隧道管理)
 #   cloud/    → 云平台模块 (token_store token 持久化)
 #   upload/   → 上传模块 (file_upload_client)       (TODO 未来)
 #
@@ -13,4 +14,5 @@
 add_subdirectory(ota)
 add_subdirectory(config)
 add_subdirectory(router)
+add_subdirectory(tunnel)
 add_subdirectory(cloud)

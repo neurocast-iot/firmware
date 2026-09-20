@@ -25,12 +25,13 @@ target_link_libraries(test_config_router
 gtest_discover_tests(test_config_router PROPERTIES TIMEOUT 30)
 
 # --- test_rpc_handler ---
-# 拉 rpc_handler.cpp + agent_config.cpp（reset 指令依赖）
+# 拉 rpc_handler.cpp + agent_config.cpp（reset 指令依赖）+ tunnel_manager.cpp（隧道指令依赖）
 # FileUploadService 只用了头文件里的 UploadTask 结构体，不链接实现
 add_executable(test_rpc_handler
     test_rpc_handler.cpp
     ${CMAKE_SOURCE_DIR}/apps/iot_agent/src/router/rpc_handler.cpp
     ${CMAKE_SOURCE_DIR}/apps/iot_agent/src/config/agent_config.cpp
+    ${CMAKE_SOURCE_DIR}/apps/iot_agent/src/tunnel/tunnel_manager.cpp
     file_upload_service_stub.cpp  # 桩：绕过 FileUploadService 的真实实现
 )
 target_include_directories(test_rpc_handler PRIVATE ${_iot_agent_router_includes})

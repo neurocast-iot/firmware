@@ -10,18 +10,6 @@
  *   - 再停云通道，最后的上报还能发出去
  *   - 最后停硬件
  */
-
-/**
- * @brief iot_agent composition root implementation
- *
- * Wiring logic migrated from main.cpp, organized by module dependency order:
- *   Config -> Hardware -> Cloud -> Upload -> IPC -> OTA -> Config Router/RPC -> Callback wiring -> Start
- *
- * Shutdown order is reverse of startup (stopStack LIFO), ensuring:
- *   - Stop business modules first (ota/ipc/upload), no new data generated
- *   - Stop cloud channel next, last reports can still be sent
- *   - Stop hardware last
- */
 #include "App.h"
 
 #include "nc/common/log_utils.h"
@@ -94,7 +82,13 @@ int App::init(const std::string& configPath) {
     m_otaManager.initialize(&m_cloudService, m_config.otaBaseDir());
     m_stopStack.push_back([this] { m_otaManager.stop(); });
 
-    /* ---- 7) ConfigRouter / RpcHandler ---- */
+    /* ---- 7) 反向隧道管理器 ----
+     * start_frp/stop_frp/start_ssh_tunnel/stop_ssh_tunnel 四个 RPC 指令的执行者；
+     * 压栈：进程退出时停监控线程、杀隧道子进程、删临时私钥文件 */
+    m_tunnelManager = std::unique_ptr<TunnelManager>(new TunnelManager());
+    m_stopStack.push_back([this] { m_tunnelManager.reset(); });
+
+    /* ---- 8) ConfigRouter / RpcHandler ---- */
     if (!m_configRouter.initialize()) {
         NC_LOGW("ConfigRouter init failed, using defaults");
     }
@@ -110,6 +104,9 @@ int App::init(const std::string& configPath) {
 
     /* reset RPC 指令依赖配置：清掉 device_config.json + token.json */
     m_rpcHandler.setConfig(&m_config);
+
+    /* frp/ssh tunnel RPC 指令依赖隧道管理器 */
+    m_rpcHandler.setTunnelManager(m_tunnelManager.get());
 
     /* 属性推送处理器 */
     m_attributeHandler = std::unique_ptr<AttributeHandler>(

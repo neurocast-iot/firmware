@@ -37,6 +37,7 @@ struct P2PSessionConfig {
     int height = 0;
     int fps = 0;
     int bitrate = 0;            /* kbps */
+    int videoCodec = 0;         /* YangVideoCodec: 0=H264, 1=H265（由调用方从相机配置映射） */
 
     /* RTC 参数（与 WHIP 推流端口 17000 错开，支持共存） */
     int rtcLocalPort = 17100;
@@ -109,9 +110,13 @@ public:
 
     bool isSessionActive() const;
 
-    /* 对端已发 DTLS close_notify（信令 bye 丢失时的兜底终止信号，
+    /* 对端已发 DTLS close_notify（信令 bye 丢失时的兑底终止信号，
      * 由服务线程轮询后调用 stopSession，不在回调线程内自毁） */
     bool isPeerClosed() const;
+    
+    /* ICE 连接不可用（Failed/Closed），观看端可能断网或崩溃，
+     * 由服务线程轮询后调用 stopSession 清理会话 */
+    bool isConnectionFailed() const;
 
     /* ===== YangCallbackIce ===== */
     void onIceStateChange(int32_t uid, YangIceCandidateState iceState) override;
@@ -139,6 +144,7 @@ private:
     /* ===== 状态 ===== */
     std::atomic<bool> m_sessionActive{false};
     std::atomic<bool> m_peer_closed{false};   /* sslCloseAlert 回调置位 */
+    std::atomic<bool> m_conn_failed{false};   /* ICE Failed/Closed 回调置位 */
     P2PSessionConfig m_config;
     CandidateHandler m_candHandler;
     KeyFrameHandler m_keyFrameHandler;

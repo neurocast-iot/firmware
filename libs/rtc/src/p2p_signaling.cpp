@@ -86,7 +86,8 @@ bool P2PSignaling::connect() {
         t4 = m_topicPrefix + "/alive";
     } else {
         t1 = m_topicPrefix + "/answer";
-        t2 = m_topicPrefix + "/cand/pusher";
+        /* 设备候选发布在 cand/device（见 sendCandidate 注释），viewer 订阅这里 */
+        t2 = m_topicPrefix + "/cand/device";
         t4 = m_topicPrefix + "/relay";
     }
     std::string t3 = m_topicPrefix + "/bye";
@@ -139,45 +140,52 @@ bool P2PSignaling::sendAnswer(const std::string& sid, const std::string& sdp) {
 }
 
 bool P2PSignaling::sendCandidate(const std::string& sid, const std::string& candidate) {
-    /* 候选按本端角色发到对应 topic，对端只订阅对方角色的候选 */
-    return publishJson(m_topicPrefix + "/cand/" + m_role, sid, "candidate", candidate);
+    /* metaRTC 的 onIceCandidate 输出是嵌套 JSON（candidate 字段里又套一层
+     * {"candidate":"...","sdpMid":...}），且 sdpMLineIndex 被误填为递增的
+     * foundation。线上必须发标准扁平格式（W3C RTCIceCandidate 的 JSON 序列化，
+     * AppRTC/flutter_webrtc 通用约定）：candidate 为裸 SDP 候选行，
+     * sdpMid/sdpMLineIndex/usernameFragment 为同级字段。在协议边界这里解包
+     * 重组，避免双重编码导致标准客户端解析失败。 */
+    std::string candStr = candidate;
+    std::string sdpMid  = "0";
+    std::string ufrag;
+    if (!candidate.empty() && candidate[0] == '{') {
+        cJSON* inner = cJSON_Parse(candidate.c_str());
+        if (inner != nullptr) {
+            cJSON* jc = cJSON_GetObjectItem(inner, "candidate");
+            if (jc && cJSON_IsString(jc)) candStr = jc->valuestring;
+            cJSON* jm = cJSON_GetObjectItem(inner, "sdpMid");
+            if (jm && cJSON_IsString(jm)) sdpMid = jm->valuestring;
+            cJSON* ju = cJSON_GetObjectItem(inner, "usernameFragment");
+            if (ju && cJSON_IsString(ju)) ufrag = ju->valuestring;
+            cJSON_Delete(inner);
+        }
+    }
+
+    cJSON* root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "sid", sid.c_str());
+    cJSON_AddStringToObject(root, "candidate", candStr.c_str());
+    cJSON_AddStringToObject(root, "sdpMid", sdpMid.c_str());
+    /* sdpMLineIndex 与 sdpMid 保持一致（metaRTC 嵌套输出里的是 foundation 错值）：
+     * mid "0" → index 0 */
+    cJSON_AddNumberToObject(root, "sdpMLineIndex", sdpMid.empty() ? 0 : atoi(sdpMid.c_str()));
+    if (!ufrag.empty()) {
+        cJSON_AddStringToObject(root, "usernameFragment", ufrag.c_str());
+    }
+
+    /* 候选 topic 必须与对端订阅的名字一致：Flutter app 订阅的是 cand/device，
+     * 设备角色内部叫 pusher，但发候选必须用 device 这个名字，否则对端收不到。 */
+    const std::string topicRole = (m_role == "pusher") ? "device" : m_role;
+    return publishRoot(m_topicPrefix + "/cand/" + topicRole, root);
 }
 
 bool P2PSignaling::sendBye(const std::string& sid, const std::string& reason) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (!m_connected || m_client == nullptr) {
-        NC_LOGW("[P2PSignaling] publish skipped: not connected");
-        return false;
-    }
-
     cJSON* root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "sid", sid.c_str());
     if (!reason.empty()) {
         cJSON_AddStringToObject(root, "reason", reason.c_str());
     }
-    char* payload = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-    if (payload == nullptr) return false;
-
-    MQTTClient_message msg = MQTTClient_message_initializer;
-    msg.payload = payload;
-    msg.payloadlen = (int)strlen(payload);
-    msg.qos = kQos;
-    msg.retained = 0;
-
-    MQTTClient_deliveryToken token;
-    std::string topic = m_topicPrefix + "/bye";
-    int rc = MQTTClient_publishMessage(m_client, topic.c_str(), &msg, &token);
-    if (rc == MQTTCLIENT_SUCCESS) {
-        rc = MQTTClient_waitForCompletion(m_client, token, kTimeoutMs);
-    }
-    free(payload);
-
-    if (rc != MQTTCLIENT_SUCCESS) {
-        NC_LOGE("[P2PSignaling] publish bye failed rc={}", rc);
-        return false;
-    }
-    return true;
+    return publishRoot(m_topicPrefix + "/bye", root);
 }
 
 bool P2PSignaling::sendRelay(const std::string& sid, const std::string& whepUrl) {
@@ -190,17 +198,22 @@ bool P2PSignaling::sendAlive(const std::string& sid) {
 
 bool P2PSignaling::publishJson(const std::string& topic, const std::string& sid,
                                const char* bodyKey, const std::string& bodyVal) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (!m_connected || m_client == nullptr) {
-        NC_LOGW("[P2PSignaling] publish skipped: not connected");
-        return false;
-    }
-
     cJSON* root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "sid", sid.c_str());
     if (bodyKey != nullptr) {
         cJSON_AddStringToObject(root, bodyKey, bodyVal.c_str());
     }
+    return publishRoot(topic, root);
+}
+
+bool P2PSignaling::publishRoot(const std::string& topic, cJSON* root) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (!m_connected || m_client == nullptr) {
+        NC_LOGW("[P2PSignaling] publish skipped: not connected");
+        cJSON_Delete(root);
+        return false;
+    }
+
     char* payload = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     if (payload == nullptr) return false;

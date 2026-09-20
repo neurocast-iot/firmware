@@ -11,7 +11,9 @@
  *   p2p/{devId}/offer        viewer → device   {"sid":"...","sdp":"..."}
  *   p2p/{devId}/answer       device → viewer   {"sid":"...","sdp":"..."}
  *   p2p/{devId}/cand/viewer  viewer → device   {"sid":"...","candidate":"..."}
- *   p2p/{devId}/cand/pusher  device → viewer   {"sid":"...","candidate":"..."}
+ *   p2p/{devId}/cand/device  device → viewer   扁平标准格式（W3C RTCIceCandidate 的
+ *                            JSON 序列化）：{"sid":"...","candidate":"candidate:...",
+ *                            "sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"..."}
  *   p2p/{devId}/bye          双向              {"sid":"..."}
  *   p2p/{devId}/relay        device → viewer   {"sid":"...","url":"..."}  改走 SRS WHEP 拉流
  *   p2p/{devId}/alive        viewer → device   {"sid":"..."}  10s 心跳（SRS 模式观看人数追踪）
@@ -26,6 +28,8 @@
 #include <string>
 
 #include "MQTTClient.h"
+
+struct cJSON;   /* 前向声明：头文件不依赖 cJSON.h，publishRoot 参数用 */
 
 namespace rtc {
 
@@ -69,6 +73,9 @@ public:
 private:
     bool publishJson(const std::string& topic, const std::string& sid,
                      const char* bodyKey, const std::string& bodyVal);
+    /* 发布已构造好的 JSON 对象（取得 root 所有权，内部负责 cJSON_Delete）；
+     * 多字段消息（如扁平格式 candidate）走这里，单字段消息走 publishJson */
+    bool publishRoot(const std::string& topic, struct cJSON* root);
 
     /* paho 静态回调包装 */
     static int  onMessageArrived(void* ctx, char* topicName, int topicLen,

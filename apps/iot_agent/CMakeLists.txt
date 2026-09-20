@@ -81,6 +81,7 @@ add_executable(iot_agent
     src/device/device_service.cpp
     src/router/config_router.cpp
     src/router/rpc_handler.cpp
+    src/tunnel/tunnel_manager.cpp
     src/ipc/ipc_hub.cpp
     src/ipc/ipc_event_handler.cpp
     src/ipc/signal_manager.cpp
@@ -101,6 +102,7 @@ target_include_directories(iot_agent PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/config
     ${CMAKE_CURRENT_SOURCE_DIR}/src/device
     ${CMAKE_CURRENT_SOURCE_DIR}/src/router
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tunnel
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ipc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/upload
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ota

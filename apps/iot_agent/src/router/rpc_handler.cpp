@@ -13,26 +13,14 @@
  *   - stopLiveStream：停止实时流推送（通过 IPC 发命令给 mediad）
  *   - restart：重启设备（先回复云端，1 秒后执行 reboot）
  *   - reset：恢复出厂配置（清掉 device_config.json + token.json，回复后自动重启）
- */
-
-/**
- * RPC command handler implementation
- *
- * Processing flow:
- *   1) Log the received RPC command
- *   2) Dispatch to the specific handler by method
- *   3) Reply to TB with execution result (success/failure)
- *
- * Supported commands:
- *   - uploadFile: upload raw files on device on demand (triggered by cloud when user wants original image/video)
- *   - startLiveStream: start live stream push (sends IPC command to mediad)
- *   - stopLiveStream: stop live stream push (sends IPC command to mediad)
- *   - restart: reboot device (reply cloud first, then reboot after 1s)
- *   - reset: factory reset (clear device_config.json + token.json, auto-reboot after reply)
+ *   - start_frp / stop_frp：开/关 frpc 反向隧道
+ *   - start_ssh_tunnel / stop_ssh_tunnel：开/关 SSH 反向隧道
+ *     隧道的进程拉起、看护、回收全在 TunnelManager，这里只做参数解析和回复
  */
 #include "router/rpc_handler.h"
 
 #include "config/agent_config.h"
+#include "tunnel/tunnel_manager.h"
 #include "upload/file_upload_service.h"
 #include "nc/common/log_utils.h"
 
@@ -47,6 +35,19 @@
 namespace {
 constexpr uint32_t kMediaStreamStart = 12010;
 constexpr uint32_t kMediaStreamStop  = 12011;
+
+/** 读字符串字段；端口这类字段服务端可能发数字，兼容 number 类型转成字符串 */
+std::string jsonStrAny(const cJSON* obj, const char* key) {
+    if (!obj) return "";
+    const cJSON* item = cJSON_GetObjectItemCaseSensitive(obj, key);
+    if (cJSON_IsString(item) && item->valuestring) return item->valuestring;
+    if (cJSON_IsNumber(item)) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%d", item->valueint);
+        return buf;
+    }
+    return "";
+}
 } // namespace
 
 namespace iot_agent {
@@ -68,6 +69,10 @@ void RpcHandler::setUploadService(FileUploadService* service) {
 
 void RpcHandler::setConfig(AgentConfig* config) {
     m_config = config;
+}
+
+void RpcHandler::setTunnelManager(TunnelManager* mgr) {
+    m_tunnelManager = mgr;
 }
 
 /* ====================================================================
@@ -100,6 +105,26 @@ void RpcHandler::handleRpc(const RpcRequest& req) {
 
     if (req.method == "reset") {
         handleReset(req);
+        return;
+    }
+
+    if (req.method == "start_frp") {
+        handleStartFrp(req);
+        return;
+    }
+
+    if (req.method == "stop_frp") {
+        handleStopFrp(req);
+        return;
+    }
+
+    if (req.method == "start_ssh_tunnel") {
+        handleStartSshTunnel(req);
+        return;
+    }
+
+    if (req.method == "stop_ssh_tunnel") {
+        handleStopSshTunnel(req);
         return;
     }
 
@@ -359,6 +384,158 @@ void RpcHandler::handleReset(const RpcRequest& req) {
         _exit(0);
     } else if (pid < 0) {
         NC_LOGE("[RpcHandler] fork 失败，无法重启");
+    }
+}
+
+/* ====================================================================
+ * handleStartFrp：开 frpc 反向隧道
+ *
+ * 服务端报文格式（DeviceCommandServiceImpl 下发）：
+ *   {
+ *     "method": "token",            frp 鉴权方式（与 RPC method 同名，别搞混）
+ *     "token": "xxx",
+ *     "serverAddr": "1.2.3.4",
+ *     "serverPort": 10000,
+ *     "proxies": [{
+ *       "name": "<deviceUid>-ssh", "type": "tcp",
+ *       "localIP": "...", "localPort": 22, "remotePort": 10002
+ *     }]
+ *   }
+ *
+ * 成功/失败都回复云端（iot_live 版不回复，云端只能干等超时，这里修掉）。
+ * 成功只表示进程拉起来了，frpc 连不上服务器会自己重连。
+ * ==================================================================== */
+void RpcHandler::handleStartFrp(const RpcRequest& req) {
+    if (!m_tunnelManager) {
+        NC_LOGE("[RpcHandler] start_frp 失败：隧道管理器未设置");
+        sendResponse(req.requestId,
+                     "{\"success\":false,\"error\":\"tunnel manager not ready\"}");
+        return;
+    }
+
+    cJSON* params = cJSON_Parse(req.paramsJson.c_str());
+    if (!params) {
+        NC_LOGW("[RpcHandler] start_frp 参数不是合法 JSON: {}", req.paramsJson.c_str());
+        sendResponse(req.requestId,
+                     "{\"success\":false,\"error\":\"invalid params json\"}");
+        return;
+    }
+
+    FrpTunnelParams p;
+    p.serverAddr = jsonStrAny(params, "serverAddr");
+    p.serverPort = jsonStrAny(params, "serverPort");
+    p.authMethod = jsonStrAny(params, "method");   /* frp 鉴权方式，注意与 RPC method 无关 */
+    p.token      = jsonStrAny(params, "token");
+
+    /* 转发配置在 proxies[0] 里（服务端一次只开一条 SSH 代理） */
+    const cJSON* proxies = cJSON_GetObjectItemCaseSensitive(params, "proxies");
+    if (cJSON_IsArray(proxies) && cJSON_GetArraySize(proxies) > 0) {
+        const cJSON* proxy0 = cJSON_GetArrayItem(proxies, 0);
+        p.proxyType  = jsonStrAny(proxy0, "type");
+        p.localPort  = jsonStrAny(proxy0, "localPort");
+        p.remotePort = jsonStrAny(proxy0, "remotePort");
+        p.proxyName  = jsonStrAny(proxy0, "name");
+        /* proxy0 里的 localIP 故意不读：云端传的 IP 不可信，强制 127.0.0.1 */
+    }
+    cJSON_Delete(params);
+
+    const std::string err = m_tunnelManager->startFrp(p);
+    if (err.empty()) {
+        sendResponse(req.requestId, "{\"success\":true}");
+    } else {
+        NC_LOGW("[RpcHandler] start_frp 失败: {}", err.c_str());
+        sendResponse(req.requestId,
+                     "{\"success\":false,\"error\":\"" + err + "\"}");
+    }
+}
+
+/* ====================================================================
+ * handleStopFrp：关 frpc 反向隧道（幂等：没在跑也算成功）
+ * ==================================================================== */
+void RpcHandler::handleStopFrp(const RpcRequest& req) {
+    if (!m_tunnelManager) {
+        NC_LOGE("[RpcHandler] stop_frp 失败：隧道管理器未设置");
+        sendResponse(req.requestId,
+                     "{\"success\":false,\"error\":\"tunnel manager not ready\"}");
+        return;
+    }
+
+    const std::string err = m_tunnelManager->stopFrp();
+    if (err.empty()) {
+        sendResponse(req.requestId, "{\"success\":true}");
+    } else {
+        NC_LOGW("[RpcHandler] stop_frp 失败: {}", err.c_str());
+        sendResponse(req.requestId,
+                     "{\"success\":false,\"error\":\"" + err + "\"}");
+    }
+}
+
+/* ====================================================================
+ * handleStartSshTunnel：开 SSH 反向隧道
+ *
+ * 服务端报文格式：
+ *   {
+ *     "serverAddr": "...", "serverPort": 22, "username": "...",
+ *     "privateKey": "PEM 内容（可选，配了才有）",
+ *     "password": "...（可选，配了才有）",    与 privateKey 二选一
+ *     "localIp": "...", "localPort": 22, "remotePort": 10003
+ *   }
+ * ==================================================================== */
+void RpcHandler::handleStartSshTunnel(const RpcRequest& req) {
+    if (!m_tunnelManager) {
+        NC_LOGE("[RpcHandler] start_ssh_tunnel 失败：隧道管理器未设置");
+        sendResponse(req.requestId,
+                     "{\"success\":false,\"error\":\"tunnel manager not ready\"}");
+        return;
+    }
+
+    cJSON* params = cJSON_Parse(req.paramsJson.c_str());
+    if (!params) {
+        NC_LOGW("[RpcHandler] start_ssh_tunnel 参数不是合法 JSON: {}", req.paramsJson.c_str());
+        sendResponse(req.requestId,
+                     "{\"success\":false,\"error\":\"invalid params json\"}");
+        return;
+    }
+
+    SshTunnelParams p;
+    p.serverAddr = jsonStrAny(params, "serverAddr");
+    p.serverPort = jsonStrAny(params, "serverPort");
+    p.username   = jsonStrAny(params, "username");
+    p.privateKey = jsonStrAny(params, "privateKey");
+    p.password   = jsonStrAny(params, "password");
+    p.localPort  = jsonStrAny(params, "localPort");
+    p.remotePort = jsonStrAny(params, "remotePort");
+    /* localIp 故意不读：隧道只允许转发设备自己，理由同 start_frp */
+    cJSON_Delete(params);
+
+    const std::string err = m_tunnelManager->startSshTunnel(p);
+    if (err.empty()) {
+        sendResponse(req.requestId, "{\"success\":true}");
+    } else {
+        NC_LOGW("[RpcHandler] start_ssh_tunnel 失败: {}", err.c_str());
+        sendResponse(req.requestId,
+                     "{\"success\":false,\"error\":\"" + err + "\"}");
+    }
+}
+
+/* ====================================================================
+ * handleStopSshTunnel：关 SSH 反向隧道（幂等：没在跑也算成功）
+ * ==================================================================== */
+void RpcHandler::handleStopSshTunnel(const RpcRequest& req) {
+    if (!m_tunnelManager) {
+        NC_LOGE("[RpcHandler] stop_ssh_tunnel 失败：隧道管理器未设置");
+        sendResponse(req.requestId,
+                     "{\"success\":false,\"error\":\"tunnel manager not ready\"}");
+        return;
+    }
+
+    const std::string err = m_tunnelManager->stopSshTunnel();
+    if (err.empty()) {
+        sendResponse(req.requestId, "{\"success\":true}");
+    } else {
+        NC_LOGW("[RpcHandler] stop_ssh_tunnel 失败: {}", err.c_str());
+        sendResponse(req.requestId,
+                     "{\"success\":false,\"error\":\"" + err + "\"}");
     }
 }
 

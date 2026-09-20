@@ -22,39 +22,13 @@
  *   - reset：恢复出厂配置
  *     参数：无
  *     清掉 device_config.json + token.json，回复成功后自动重启设备
+ *   - start_frp / stop_frp：开/关 frpc 反向隧道（远程调试用）
+ *   - start_ssh_tunnel / stop_ssh_tunnel：开/关 SSH 反向隧道（备选通道）
+ *     这四个指令的进程管理逻辑全部在 TunnelManager，这里只做参数解析和回复
  *
  * 回复方式：
  *   TB 的 RPC 回复要 publish 到 v1/devices/me/rpc/response/{requestId}
  *   所以需要一个 publish 回调（由 main.cpp 传入，底层调 MqttClient::publish）
- */
-
-/**
- * RPC command handler
- *
- * Responsibility:
- *   Receive TB RPC commands -> dispatch by method -> reply with execution result
- *
- * Supported commands:
- *   - uploadFile: upload raw files on device (on-demand retrieval scenario)
- *     Params: {"fileType":"image|video","filePath":"/mnt/...","fileId":"xxx"}
- *     Enqueues upload task; actual result reported via media_file_upload_result event
- *     (response only indicates task was enqueued)
- *   - startLiveStream: start live stream push
- *     Params: none (or empty JSON)
- *     Sends MEDIA_STREAM_START via IPC to mediad, triggers LiveStreamService push mode
- *   - stopLiveStream: stop live stream push
- *     Params: none (or empty JSON)
- *     Sends MEDIA_STREAM_STOP via IPC to mediad
- *   - restart: reboot device
- *     Params: none
- *     Reply TB success first, then reboot after 1 second
- *   - reset: factory reset
- *     Params: none
- *     Clear device_config.json + token.json, auto-reboot after reply success
- *
- * Reply method:
- *   TB RPC replies must be published to v1/devices/me/rpc/response/{requestId}
- *   Requires a publish callback (passed in by main.cpp,底层 calls MqttClient::publish)
  */
 #pragma once
 
@@ -66,6 +40,7 @@ namespace iot_agent {
 
 class AgentConfig;
 class FileUploadService;
+class TunnelManager;
 
 /**
  * 平台无关的 RPC 指令（由平台实现解析出来）
@@ -110,6 +85,11 @@ public:
     void setConfig(AgentConfig* config);
 
     /**
+     * 设置隧道管理器（frp/ssh tunnel 四个指令依赖，不设置则这些指令直接报错）
+     */
+    void setTunnelManager(TunnelManager* mgr);
+
+    /**
      * 处理一条 RPC 指令：按 method 分发到具体处理逻辑
      */
     void handleRpc(const RpcRequest& req);
@@ -130,6 +110,18 @@ private:
     /** reset 指令处理：清掉配置文件和 token，回复成功后自动重启 */
     void handleReset(const RpcRequest& req);
 
+    /** start_frp 指令处理：解析服务端报文格式 → 交给 TunnelManager 拉起 frpc */
+    void handleStartFrp(const RpcRequest& req);
+
+    /** stop_frp 指令处理：关掉 frpc 隧道（幂等） */
+    void handleStopFrp(const RpcRequest& req);
+
+    /** start_ssh_tunnel 指令处理：解析参数 → TunnelManager 拉起 dbclient 反向隧道 */
+    void handleStartSshTunnel(const RpcRequest& req);
+
+    /** stop_ssh_tunnel 指令处理：关掉 SSH 反向隧道（幂等） */
+    void handleStopSshTunnel(const RpcRequest& req);
+
     /** 回复 TB RPC 结果 */
     void sendResponse(const std::string& requestId, const std::string& resultJson);
 
@@ -137,6 +129,7 @@ private:
     IpcCommandCallback m_ipcCommand;
     FileUploadService* m_uploadService = nullptr;
     AgentConfig* m_config = nullptr;
+    TunnelManager* m_tunnelManager = nullptr;
 };
 
 } // namespace iot_agent

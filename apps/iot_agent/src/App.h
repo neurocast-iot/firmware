@@ -12,21 +12,6 @@
  *
  * 声明顺序 = 构造依赖顺序（后者引用前者），勿调整。
  */
-
-/**
- * @brief iot_agent composition root
- *
- * Responsibility:
- *   Create all modules in dependency order, wire callbacks, manage shutdown.
- *   main.cpp only handles process-level concerns (logging, signals, main loop);
- *   all business assembly is here.
- *
- * Symmetric with mediad's App:
- *   - mediad App manages "local media" (camera/OSD/recording/snapshot/triggers)
- *   - iot_agent App manages "cloud channel" (MQTT/upload/OTA/config routing/RPC)
- *
- * Declaration order = construction dependency order (later references earlier), do not reorder.
- */
 #pragma once
 
 #include "config/agent_config.h"
@@ -38,6 +23,7 @@
 #include "ipc/ipc_hub.h"
 #include "ipc/ipc_event_handler.h"
 #include "ota/ota_manager.h"
+#include "tunnel/tunnel_manager.h"
 #include "upload/file_upload_service.h"
 #include "upload/file_upload_client.h"
 #include "upload/upload_result_reporter.h"
@@ -106,11 +92,15 @@ private:
     /* 7) OTA */
     ota::OtaManager m_otaManager;
 
-    /* 8) 配置路由 + RPC 处理 */
+    /* 8) 反向隧道管理（frp/SSH，start_frp 等四个 RPC 指令的执行者）
+     *    析构会停监控线程并杀掉隧道子进程，不留孤儿进程 */
+    std::unique_ptr<TunnelManager> m_tunnelManager;
+
+    /* 9) 配置路由 + RPC 处理 */
     ConfigRouter    m_configRouter;
     RpcHandler      m_rpcHandler;
 
-    /* 9) 属性推送分发（需要引用其他模块，用 unique_ptr 延迟创建） */
+    /* 10) 属性推送分发（需要引用其他模块，用 unique_ptr 延迟创建） */
     std::unique_ptr<AttributeHandler> m_attributeHandler;
 };
 

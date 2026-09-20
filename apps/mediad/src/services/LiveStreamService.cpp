@@ -13,6 +13,8 @@
 
 #include "nc/common/log_utils.h"
 
+#include <yangutil/yangavinfo.h>
+
 #include <chrono>
 #include <unistd.h>
 
@@ -342,6 +344,7 @@ void LiveStreamService::processMessage(const SigMsg& msg) {
 
     if (msg.type == "candidate") {
         if (m_mode == Mode::P2P && msg.sid == m_p2pSid) {
+            NC_LOGI("LiveStreamService: candidate sid={} body={}", msg.sid.c_str(), msg.body.c_str());
             m_session.handleRemoteCandidate(msg.body);
         }
         return;
@@ -401,6 +404,10 @@ void LiveStreamService::tickLocked(int64_t now) {
         } else if (m_session.isPeerClosed()) {
             /* DTLS close_notify：信令 bye 丢失时的兑底终止信号 */
             NC_LOGI("LiveStreamService: peer closed (dtls), p2p -> idle");
+            teardownAllLocked(false);
+        } else if (m_session.isConnectionFailed()) {
+            /* ICE Failed/Closed：观看端断网或崩溃，metaRTC 检测到连接不可用 */
+            NC_LOGW("LiveStreamService: connection failed (ice), p2p -> idle");
             teardownAllLocked(false);
         }
         return;
@@ -483,6 +490,7 @@ bool LiveStreamService::enterP2P(const std::string& sid, const std::string& offe
     cfg.height  = ch.height;
     cfg.fps     = ch.fps;
     cfg.bitrate = ch.bitrate;
+    cfg.videoCodec = (ch.codec == camera::CodecType::H265) ? Yang_VED_H265 : Yang_VED_H264;
 
     /* P2P_Host 模式：清空 ICE 配置，只收集 host 候选（局域网直连）
      * P2P 模式：用配置的 TURN 服务器（跨网络 NAT 穿透） */
@@ -542,6 +550,11 @@ bool LiveStreamService::ensureWhipPushing() {
         rtc::WhipConfig cfg;
         cfg.width = ch.width; cfg.height = ch.height;
         cfg.fps = ch.fps; cfg.bitrate = ch.bitrate;
+        /* SRS 6.0 只支持 H264 WebRTC 推流，WHIP 路径强制 H264 */
+        cfg.videoCodec = Yang_VED_H264;
+        if (ch.codec == camera::CodecType::H265) {
+            NC_LOGW("LiveStreamService: camera is H265 but WHIP requires H264 (SRS limitation)");
+        }
         const std::string whipUrl = m_cfg.whipUrl(m_devId, m_pushToken);
         if (!m_pusher.startPush(cfg, whipUrl)) {
             NC_LOGE("LiveStreamService: whip restart failed url={}", whipUrl.c_str());
@@ -563,6 +576,11 @@ bool LiveStreamService::ensureWhipPushing() {
     cfg.height  = ch.height;
     cfg.fps     = ch.fps;
     cfg.bitrate = ch.bitrate;
+    /* SRS 6.0 只支持 H264 WebRTC 推流，WHIP 路径强制 H264 */
+    cfg.videoCodec = Yang_VED_H264;
+    if (ch.codec == camera::CodecType::H265) {
+        NC_LOGW("LiveStreamService: camera is H265 but WHIP requires H264 (SRS limitation)");
+    }
 
     /* 阻塞式：HTTP SDP 交换 + 等待就绪（最长 10s），期间持 m_mutex——
      * 可接受：仅发生在切 SFU 的瞬间，且 SRS 公网直连通常 <1s */
