@@ -100,17 +100,17 @@ ctest --preset x86-debug
 
 ## 文档
 
-完整文档在仓库根目录的 [docs/](../docs/) 下。
+完整文档在 [docs 仓库](https://github.com/neurocast-iot/docs) 的 `cn/firmware/` 下。
 
-- **[架构文档](../docs/firmware/architecture.md)** — 系统整体架构、IPC 拓扑、平台抽象策略、数据流
-- **[WebRTC 推流](../docs/firmware/guides/webrtc-streaming.md)** — P2P/SFU 模式、MQTT 信令、WHIP/WHEP 协议
-- [信令协议](../docs/firmware/api/push-streaming-protocol.md) — P2P/SFU 信令详细协议
-- [IPC 协议](../docs/firmware/api/ipc-protocol.md) — 进程间通信协议
-- [mediad 接口](../docs/firmware/api/mediad-api.md) — 媒体守护进程命令和事件参考
-- [iot_agent 接口](../docs/firmware/api/iot-agent-api.md) — 云端代理 MQTT 接口
-- [OSD 水印配置](../docs/firmware/api/osd-elements-config-api.md) — OSD 元素配置 API
-- [触发源配置](../docs/firmware/api/triggers-config-api.md) — 触发自动化配置
-- [配置参考](../docs/firmware/guides/config-reference.md) — 全部配置项说明
+- **[架构文档](https://github.com/neurocast-iot/docs/blob/main/cn/firmware/architecture.md)** — 系统整体架构、IPC 拓扑、平台抽象策略、数据流
+- **[WebRTC 推流](https://github.com/neurocast-iot/docs/blob/main/cn/firmware/guides/webrtc-streaming.md)** — P2P/SFU 模式、MQTT 信令、WHIP/WHEP 协议
+- [信令协议](https://github.com/neurocast-iot/docs/blob/main/cn/firmware/api/push-streaming-protocol.md) — P2P/SFU 信令详细协议
+- [IPC 协议](https://github.com/neurocast-iot/docs/blob/main/cn/firmware/api/ipc-protocol.md) — 进程间通信协议
+- [mediad 接口](https://github.com/neurocast-iot/docs/blob/main/cn/firmware/api/mediad-api.md) — 媒体守护进程命令和事件参考
+- [iot_agent 接口](https://github.com/neurocast-iot/docs/blob/main/cn/firmware/api/iot-agent-api.md) — 云端代理 MQTT 接口
+- [OSD 水印配置](https://github.com/neurocast-iot/docs/blob/main/cn/firmware/api/osd-elements-config-api.md) — OSD 元素配置 API
+- [触发源配置](https://github.com/neurocast-iot/docs/blob/main/cn/firmware/api/triggers-config-api.md) — 触发自动化配置
+- [配置参考](https://github.com/neurocast-iot/docs/blob/main/cn/firmware/guides/config-reference.md) — 全部配置项说明
 
 ## 第三方依赖
 
